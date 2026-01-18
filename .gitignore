@@ -1,0 +1,43 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+plexrenamer
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build output
+/build/
+/dist/
+
+# Local database files (don't commit Plex databases)
+*.db
+*.db-wal
+*.db-shm
+
+# Output directories
+/output/
+/renamed/
