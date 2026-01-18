@@ -11,7 +11,8 @@ plexrenamer
 
 # Output of the go coverage tool
 *.out
-
+*.bat
+*.txt
 # Go workspace file
 go.work
 

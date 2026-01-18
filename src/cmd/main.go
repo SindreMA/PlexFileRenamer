@@ -47,7 +47,7 @@ func main() {
 func parseFlags() *Config {
 	config := &Config{}
 
-	flag.StringVar(&config.OutputDir, "output", "", "Output directory for renamed files (required)")
+	flag.StringVar(&config.OutputDir, "output", "", "Output directory for renamed files (default: source location root)")
 	flag.BoolVar(&config.DryRun, "dry-run", false, "Preview changes without applying them")
 	flag.BoolVar(&config.ScriptMode, "script", false, "Output shell commands instead of executing")
 	flag.StringVar(&config.ScriptShell, "shell", "cmd", "Shell format for script output: cmd, powershell, or bash")
@@ -435,6 +435,7 @@ func generateOperations(config *Config, formatter *renamer.Formatter, prompter *
 
 	// Helper to get output path for a file based on its location
 	getOutputPath := func(filePath string) string {
+		// First check if there's a custom output for this specific location
 		if len(locationOutputs) > 0 {
 			for _, lo := range locationOutputs {
 				if pathInLocations(filePath, []database.SectionLocation{lo.Location}) {
@@ -442,7 +443,17 @@ func generateOperations(config *Config, formatter *renamer.Formatter, prompter *
 				}
 			}
 		}
-		return config.OutputDir
+		// If --output was specified, use it
+		if config.OutputDir != "" {
+			return config.OutputDir
+		}
+		// Otherwise, use the file's source location root as the output
+		// This keeps files organized in their original library location
+		if locPath := getLocationForPath(filePath, content.Locations); locPath != "" {
+			return locPath
+		}
+		// Fallback to current directory (shouldn't happen normally)
+		return "."
 	}
 
 	switch content.Section.SectionType {
@@ -548,14 +559,41 @@ func generateOperations(config *Config, formatter *renamer.Formatter, prompter *
 
 // pathInLocations checks if a file path is under any of the selected locations
 func pathInLocations(filePath string, locations []database.SectionLocation) bool {
-	normalizedPath := strings.ToLower(filepath.ToSlash(filePath))
+	normalizedPath := normalizePathForComparison(filePath)
 	for _, loc := range locations {
-		normalizedLoc := strings.ToLower(filepath.ToSlash(loc.RootPath))
-		if strings.HasPrefix(normalizedPath, normalizedLoc) {
+		normalizedLoc := normalizePathForComparison(loc.RootPath)
+		// Remove trailing slash, then check with /
+		normalizedLoc = strings.TrimSuffix(normalizedLoc, "/")
+		if strings.HasPrefix(normalizedPath, normalizedLoc+"/") {
 			return true
 		}
 	}
 	return false
+}
+
+// normalizePathForComparison normalizes a path for comparison by converting to lowercase,
+// using forward slashes, and removing Windows long path prefixes
+func normalizePathForComparison(path string) string {
+	normalized := strings.ToLower(filepath.ToSlash(path))
+	// Remove Windows long path prefix //?/ or \\?\
+	normalized = strings.TrimPrefix(normalized, "//?/")
+	normalized = strings.TrimPrefix(normalized, "//./")
+	return normalized
+}
+
+// getLocationForPath returns the location root path for a given file path
+func getLocationForPath(filePath string, locations []database.SectionLocation) string {
+	normalizedPath := normalizePathForComparison(filePath)
+	for _, loc := range locations {
+		normalizedLoc := normalizePathForComparison(loc.RootPath)
+		// Remove trailing slash for comparison
+		normalizedLoc = strings.TrimSuffix(normalizedLoc, "/")
+		// Check if the file path starts with the location path followed by /
+		if strings.HasPrefix(normalizedPath, normalizedLoc+"/") {
+			return loc.RootPath
+		}
+	}
+	return ""
 }
 
 // fileInLocations checks if any file in the list is under any of the selected locations
