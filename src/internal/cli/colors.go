@@ -109,7 +109,8 @@ func PrintResultsBox(succeeded, skipped, failed int) {
 func PrintBanner() {
 	pterm.DefaultBigText.WithLetters(
 		pterm.NewLettersFromStringWithStyle("Plex", pterm.NewStyle(pterm.FgCyan)),
-		pterm.NewLettersFromStringWithStyle("Renamer", pterm.NewStyle(pterm.FgLightMagenta)),
+		pterm.NewLettersFromStringWithStyle("File", pterm.NewStyle(pterm.FgLightMagenta)),
+		pterm.NewLettersFromStringWithStyle("Renamer", pterm.NewStyle(pterm.FgCyan)),
 	).Render()
 	DimStyle.Println("v1.0 - Rename media files using Plex metadata")
 	fmt.Println()
