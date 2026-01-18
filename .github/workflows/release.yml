@@ -41,7 +41,7 @@ jobs:
     - name: Get version
       id: version
       run: |
-        echo "VERSION=dev-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        echo "VERSION=v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
     - name: Create Release
       uses: softprops/action-gh-release@v1

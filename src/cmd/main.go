@@ -352,8 +352,8 @@ func writeScriptCmd(file *os.File, operations []renamer.Operation, config *Confi
 
 		// Print progress
 		fmt.Fprintf(file, "echo [%d/%d] %s\n", i+1, total, config.Mode)
-		fmt.Fprintf(file, "echo   From: %s\n", escapeCmdPath(filepath.Base(op.Source)))
-		fmt.Fprintf(file, "echo   To:   %s\n", escapeCmdPath(filepath.Base(op.Destination)))
+		fmt.Fprintf(file, "echo   From: %s\n", escapeCmdPath(op.Source))
+		fmt.Fprintf(file, "echo   To:   %s\n", escapeCmdPath(op.Destination))
 
 		fmt.Fprintf(file, "if not exist \"%s\" mkdir \"%s\"\n", destDir, destDir)
 
@@ -418,13 +418,11 @@ func writeScriptPowerShell(file *os.File, operations []renamer.Operation, config
 		src := strings.ReplaceAll(op.Source, "'", "''")
 		dst := strings.ReplaceAll(op.Destination, "'", "''")
 		destDir := strings.ReplaceAll(filepath.Dir(op.Destination), "'", "''")
-		srcBase := strings.ReplaceAll(filepath.Base(op.Source), "'", "''")
-		dstBase := strings.ReplaceAll(filepath.Base(op.Destination), "'", "''")
 
 		// Print progress
 		fmt.Fprintf(file, "Write-Host '[%d/%d] %s'\n", i+1, total, config.Mode)
-		fmt.Fprintf(file, "Write-Host '  From: %s'\n", srcBase)
-		fmt.Fprintf(file, "Write-Host '  To:   %s'\n", dstBase)
+		fmt.Fprintf(file, "Write-Host '  From: %s'\n", src)
+		fmt.Fprintf(file, "Write-Host '  To:   %s'\n", dst)
 
 		fmt.Fprintf(file, "if (-not (Test-Path '%s')) { New-Item -ItemType Directory -Path '%s' -Force | Out-Null }\n", destDir, destDir)
 
@@ -461,13 +459,11 @@ func writeScriptBash(file *os.File, operations []renamer.Operation, config *Conf
 		src := strings.ReplaceAll(op.Source, "'", "'\\''")
 		dst := strings.ReplaceAll(op.Destination, "'", "'\\''")
 		destDir := strings.ReplaceAll(filepath.Dir(op.Destination), "'", "'\\''")
-		srcBase := strings.ReplaceAll(filepath.Base(op.Source), "'", "'\\''")
-		dstBase := strings.ReplaceAll(filepath.Base(op.Destination), "'", "'\\''")
 
 		// Print progress
 		fmt.Fprintf(file, "echo '[%d/%d] %s'\n", i+1, total, config.Mode)
-		fmt.Fprintf(file, "echo '  From: %s'\n", srcBase)
-		fmt.Fprintf(file, "echo '  To:   %s'\n", dstBase)
+		fmt.Fprintf(file, "echo '  From: %s'\n", src)
+		fmt.Fprintf(file, "echo '  To:   %s'\n", dst)
 
 		fmt.Fprintf(file, "mkdir -p '%s'\n", destDir)
 
