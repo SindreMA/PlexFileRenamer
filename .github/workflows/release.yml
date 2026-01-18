@@ -1,0 +1,93 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build for Windows
+      working-directory: ./src
+      run: |
+        GOOS=windows GOARCH=amd64 go build -o ../plexfilerenamer-windows-amd64.exe ./cmd
+
+    - name: Build for Linux
+      working-directory: ./src
+      run: |
+        GOOS=linux GOARCH=amd64 go build -o ../plexfilerenamer-linux-amd64 ./cmd
+
+    - name: Build for macOS
+      working-directory: ./src
+      run: |
+        GOOS=darwin GOARCH=amd64 go build -o ../plexfilerenamer-darwin-amd64 ./cmd
+        GOOS=darwin GOARCH=arm64 go build -o ../plexfilerenamer-darwin-arm64 ./cmd
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: PlexFileRenamer ${{ steps.version.outputs.VERSION }}
+        body: |
+          ## PlexFileRenamer ${{ steps.version.outputs.VERSION }}
+
+          A CLI tool to rename/move media files based on Plex Media Server metadata.
+
+          ### Features
+          - Reads Plex SQLite database (with WAL support)
+          - Supports Movies and TV Shows
+          - Dry-run mode to preview changes
+          - Copy and move modes
+          - Interactive per-library and per-location approval
+          - Custom output paths per location
+          - Script generation (CMD, PowerShell, Bash)
+          - Path mapping for network shares
+
+          ### Usage
+          ```
+          plexfilerenamer [options] <database-path>
+
+          Options:
+            --output         Output directory for renamed files
+            --dry-run        Preview changes without applying them
+            --script         Generate script file instead of executing
+            --shell          Shell format: cmd, powershell, or bash
+            --mode           Operation mode: copy or move (default: move)
+            --auto-approve   Skip interactive prompts
+            --path-map       Path mapping (old:new) for network shares
+          ```
+        files: |
+          plexfilerenamer-windows-amd64.exe
+          plexfilerenamer-linux-amd64
+          plexfilerenamer-darwin-amd64
+          plexfilerenamer-darwin-arm64
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
