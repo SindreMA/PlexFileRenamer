@@ -344,21 +344,57 @@ func writeScriptCmd(file *os.File, operations []renamer.Operation, config *Confi
 	fmt.Fprintln(file, "REM ============================================")
 	fmt.Fprintln(file)
 
-	for _, op := range operations {
-		destDir := filepath.Dir(op.Destination)
+	total := len(operations)
+	for i, op := range operations {
+		src := escapeCmdPath(op.Source)
+		dst := escapeCmdPath(op.Destination)
+		destDir := escapeCmdPath(filepath.Dir(op.Destination))
+
+		// Print progress
+		fmt.Fprintf(file, "echo [%d/%d] %s\n", i+1, total, config.Mode)
+		fmt.Fprintf(file, "echo   From: %s\n", escapeCmdPath(filepath.Base(op.Source)))
+		fmt.Fprintf(file, "echo   To:   %s\n", escapeCmdPath(filepath.Base(op.Destination)))
+
 		fmt.Fprintf(file, "if not exist \"%s\" mkdir \"%s\"\n", destDir, destDir)
 
 		if config.Mode == renamer.ModeCopy {
-			fmt.Fprintf(file, "if not exist \"%s\" copy \"%s\" \"%s\"\n", op.Destination, op.Source, op.Destination)
+			fmt.Fprintf(file, "if not exist \"%s\" copy \"%s\" \"%s\"\n", dst, src, dst)
 		} else {
-			fmt.Fprintf(file, "if not exist \"%s\" move \"%s\" \"%s\"\n", op.Destination, op.Source, op.Destination)
+			fmt.Fprintf(file, "if not exist \"%s\" move \"%s\" \"%s\"\n", dst, src, dst)
 		}
 	}
 
 	fmt.Fprintln(file)
 	fmt.Fprintln(file, "echo.")
-	fmt.Fprintf(file, "echo Completed %d operations.\n", len(operations))
+	fmt.Fprintf(file, "echo Completed %d operations.\n", total)
 	fmt.Fprintln(file, "pause")
+}
+
+// escapeCmdPath escapes special characters for Windows batch scripts
+func escapeCmdPath(path string) string {
+	// In batch scripts within double quotes, we need to escape:
+	// % -> %% (percent signs are used for variables)
+	// ^ -> ^^ (caret is the escape character)
+	// & -> ^& (ampersand separates commands)
+	// < -> ^< (redirection)
+	// > -> ^> (redirection)
+	// | -> ^| (pipe)
+	// ! -> ^^! (exclamation mark in delayed expansion)
+
+	result := path
+	// Escape percent signs first (double them)
+	result = strings.ReplaceAll(result, "%", "%%")
+	// Escape caret (must be done before other escapes that use caret)
+	result = strings.ReplaceAll(result, "^", "^^")
+	// Escape other special characters with caret
+	result = strings.ReplaceAll(result, "&", "^&")
+	result = strings.ReplaceAll(result, "<", "^<")
+	result = strings.ReplaceAll(result, ">", "^>")
+	result = strings.ReplaceAll(result, "|", "^|")
+	// Escape exclamation marks (for delayed expansion mode)
+	result = strings.ReplaceAll(result, "!", "^!")
+
+	return result
 }
 
 func writeScriptPowerShell(file *os.File, operations []renamer.Operation, config *Config) {
@@ -377,10 +413,18 @@ func writeScriptPowerShell(file *os.File, operations []renamer.Operation, config
 	fmt.Fprintln(file, "# ============================================")
 	fmt.Fprintln(file)
 
-	for _, op := range operations {
+	total := len(operations)
+	for i, op := range operations {
 		src := strings.ReplaceAll(op.Source, "'", "''")
 		dst := strings.ReplaceAll(op.Destination, "'", "''")
 		destDir := strings.ReplaceAll(filepath.Dir(op.Destination), "'", "''")
+		srcBase := strings.ReplaceAll(filepath.Base(op.Source), "'", "''")
+		dstBase := strings.ReplaceAll(filepath.Base(op.Destination), "'", "''")
+
+		// Print progress
+		fmt.Fprintf(file, "Write-Host '[%d/%d] %s'\n", i+1, total, config.Mode)
+		fmt.Fprintf(file, "Write-Host '  From: %s'\n", srcBase)
+		fmt.Fprintf(file, "Write-Host '  To:   %s'\n", dstBase)
 
 		fmt.Fprintf(file, "if (-not (Test-Path '%s')) { New-Item -ItemType Directory -Path '%s' -Force | Out-Null }\n", destDir, destDir)
 
@@ -392,7 +436,7 @@ func writeScriptPowerShell(file *os.File, operations []renamer.Operation, config
 	}
 
 	fmt.Fprintln(file)
-	fmt.Fprintf(file, "Write-Host 'Completed %d operations.'\n", len(operations))
+	fmt.Fprintf(file, "Write-Host 'Completed %d operations.'\n", total)
 }
 
 func writeScriptBash(file *os.File, operations []renamer.Operation, config *Config) {
@@ -412,10 +456,18 @@ func writeScriptBash(file *os.File, operations []renamer.Operation, config *Conf
 	fmt.Fprintln(file, "# ============================================")
 	fmt.Fprintln(file)
 
-	for _, op := range operations {
+	total := len(operations)
+	for i, op := range operations {
 		src := strings.ReplaceAll(op.Source, "'", "'\\''")
 		dst := strings.ReplaceAll(op.Destination, "'", "'\\''")
 		destDir := strings.ReplaceAll(filepath.Dir(op.Destination), "'", "'\\''")
+		srcBase := strings.ReplaceAll(filepath.Base(op.Source), "'", "'\\''")
+		dstBase := strings.ReplaceAll(filepath.Base(op.Destination), "'", "'\\''")
+
+		// Print progress
+		fmt.Fprintf(file, "echo '[%d/%d] %s'\n", i+1, total, config.Mode)
+		fmt.Fprintf(file, "echo '  From: %s'\n", srcBase)
+		fmt.Fprintf(file, "echo '  To:   %s'\n", dstBase)
 
 		fmt.Fprintf(file, "mkdir -p '%s'\n", destDir)
 
@@ -427,7 +479,7 @@ func writeScriptBash(file *os.File, operations []renamer.Operation, config *Conf
 	}
 
 	fmt.Fprintln(file)
-	fmt.Fprintf(file, "echo 'Completed %d operations.'\n", len(operations))
+	fmt.Fprintf(file, "echo 'Completed %d operations.'\n", total)
 }
 
 func generateOperations(config *Config, formatter *renamer.Formatter, prompter *cli.Prompter, content *database.LibraryContent, selectedLocations []database.SectionLocation, locationOutputs []cli.LocationWithOutput) ([]renamer.Operation, error) {
